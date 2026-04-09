@@ -111,6 +111,12 @@ All three types are fully supported:
 - Tables/columns not found in the target are skipped (warnings are printed)
 - Native SQL queries are copied as-is — table and column names inside the SQL text are **not** automatically rewritten. If the target database uses different names, edit the SQL manually after cloning.
 
+## Your ideas
+
+![43bf277e2f8620f3ffa874fbaec55a3c](https://github.com/user-attachments/assets/c1d76dea-68ef-40f2-8328-044d861add8a)
+
+Let me know if you are looking for any update needed
+
 ## License
 
 MIT
