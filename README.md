@@ -113,11 +113,7 @@ All three types are fully supported:
 
 ## Your ideas
 
-<details>
-     <summary>Demo</summary>
-     <img src="https://github.com/user-attachments/assets/c1d76dea-68ef-40f2-8328-044d861add8a" width="600" />
-</details>
-
+<img src="https://github.com/user-attachments/assets/c1d76dea-68ef-40f2-8328-044d861add8a?raw=true" width="600" />
 
 Let me know if you are looking for any update needed
 
