@@ -8,7 +8,7 @@ Clone Metabase dashboards across databases or swap source views within the same 
 |------|----------|
 | `clone_dashboard_interactive_en.py` | Clone a dashboard to a **different database** (same schema, different DB) on the **same server** |
 | `clone_view_simple_en.py` | Clone a dashboard within the **same database**, replacing the source view/table with another |
-| `clone_cross_metabase_en.py` | Clone a dashboard from one **Metabase server to another** (cross-server cloning) |
+| `clone_cross_metabase_en.py` | Clone a dashboard from one **Metabase server to another** (cross-server cloning). Located in **cross_metabase** directory |
 
 ## Requirements
 
