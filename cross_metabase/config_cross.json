@@ -1,0 +1,15 @@
+{
+    "source": {
+        "metabase_url": "https://yoursourcemetabaseurl.com/",
+        "username": "yourloginoremail",
+        "password": "yourpass",
+        "database_id": 1,
+        "dashboard_id": 8
+    },
+    "target": {
+        "metabase_url": "http://yoursecondmetabaseurl/",
+        "username": "yourloginoremail",
+        "password": "yourpass"
+    },
+    "name_suffix": " (cloned)"
+}
