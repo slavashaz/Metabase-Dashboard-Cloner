@@ -1,15 +1,19 @@
 {
     "source": {
         "metabase_url": "https://yoursourcemetabaseurl.com/",
+        "api_key": "",
         "username": "yourloginoremail",
         "password": "yourpass",
+        "ssl_verify": true,
         "database_id": 1,
         "dashboard_id": 8
     },
     "target": {
         "metabase_url": "http://yoursecondmetabaseurl/",
+        "api_key": "",
         "username": "yourloginoremail",
-        "password": "yourpass"
+        "password": "yourpass",
+        "ssl_verify": true
     },
     "name_suffix": " (cloned)"
 }
