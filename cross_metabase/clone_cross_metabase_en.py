@@ -19,6 +19,13 @@ import json
 import sys
 import io
 import os
+import warnings
+
+try:
+    import certifi
+    _CERTIFI_PATH = certifi.where()
+except ImportError:
+    _CERTIFI_PATH = None
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
@@ -41,14 +48,18 @@ with open(CONFIG_FILE, "r", encoding="utf-8") as f:
     CFG = json.load(f)
 
 SRC_METABASE_URL = CFG["source"]["metabase_url"]
-SRC_USERNAME = CFG["source"]["username"]
-SRC_PASSWORD = CFG["source"]["password"]
+SRC_API_KEY = CFG["source"].get("api_key", "")
+SRC_USERNAME = CFG["source"].get("username", "")
+SRC_PASSWORD = CFG["source"].get("password", "")
+SRC_SSL_VERIFY = CFG["source"].get("ssl_verify", True)
 SRC_DB_ID = CFG["source"]["database_id"]
 SRC_DASHBOARD_ID = CFG["source"]["dashboard_id"]
 
 TGT_METABASE_URL = CFG["target"]["metabase_url"]
-TGT_USERNAME = CFG["target"]["username"]
-TGT_PASSWORD = CFG["target"]["password"]
+TGT_API_KEY = CFG["target"].get("api_key", "")
+TGT_USERNAME = CFG["target"].get("username", "")
+TGT_PASSWORD = CFG["target"].get("password", "")
+TGT_SSL_VERIFY = CFG["target"].get("ssl_verify", True)
 
 NAME_SUFFIX = CFG.get("name_suffix", " (cloned)")
 
@@ -56,33 +67,70 @@ NAME_SUFFIX = CFG.get("name_suffix", " (cloned)")
 # Script code
 # ============================================================================
 
-class MetabaseSession:
-    """Thin wrapper around a requests session with Metabase auth."""
+def _resolve_ssl(ssl_verify):
+    """
+    Resolve ssl_verify value for requests:
+      True  -> use certifi bundle if available, otherwise requests default
+      False -> disable verification (suppress warning)
+      str   -> path to a custom CA bundle
+    """
+    if ssl_verify is False:
+        warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+        try:
+            from urllib3.exceptions import InsecureRequestWarning
+            warnings.simplefilter("ignore", InsecureRequestWarning)
+        except ImportError:
+            pass
+        return False
+    if isinstance(ssl_verify, str):
+        return ssl_verify
+    # True — use certifi if installed
+    return _CERTIFI_PATH if _CERTIFI_PATH else True
 
-    def __init__(self, base_url, username, password):
+
+class MetabaseSession:
+    """Thin wrapper around a requests session with Metabase auth.
+
+    Authentication priority:
+      1. API key (api_key)  — sets X-API-KEY header, no session call needed
+      2. Username + password — calls /api/session, sets X-Metabase-Session
+
+    SSL:
+      ssl_verify=True   — use certifi CA bundle if available
+      ssl_verify=False  — disable certificate verification
+      ssl_verify="path" — use custom CA bundle file
+    """
+
+    def __init__(self, base_url, api_key="", username="", password="", ssl_verify=True):
         self.base_url = base_url.rstrip('/')
+        self.verify = _resolve_ssl(ssl_verify)
         self.session = requests.Session()
-        resp = self.session.post(
-            f"{self.base_url}/api/session",
-            json={"username": username, "password": password},
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(f"Auth failed: {resp.status_code} {resp.text[:200]}")
-        token = resp.json()["id"]
-        self.session.headers.update({"X-Metabase-Session": token})
+
+        if api_key:
+            self.session.headers.update({"X-API-KEY": api_key})
+        else:
+            resp = self.session.post(
+                f"{self.base_url}/api/session",
+                json={"username": username, "password": password},
+                verify=self.verify,
+            )
+            if resp.status_code != 200:
+                raise RuntimeError(f"Auth failed: {resp.status_code} {resp.text[:200]}")
+            token = resp.json()["id"]
+            self.session.headers.update({"X-Metabase-Session": token})
 
     def get(self, path):
-        resp = self.session.get(f"{self.base_url}/api{path}")
+        resp = self.session.get(f"{self.base_url}/api{path}", verify=self.verify)
         resp.raise_for_status()
         return resp.json()
 
     def post(self, path, data):
-        resp = self.session.post(f"{self.base_url}/api{path}", json=data)
+        resp = self.session.post(f"{self.base_url}/api{path}", json=data, verify=self.verify)
         resp.raise_for_status()
         return resp.json()
 
     def put(self, path, data):
-        resp = self.session.put(f"{self.base_url}/api{path}", json=data)
+        resp = self.session.put(f"{self.base_url}/api{path}", json=data, verify=self.verify)
         resp.raise_for_status()
         return resp.json()
 
@@ -495,7 +543,7 @@ def main():
     # Connect to source
     print(f"\n[1/2] Connecting to source: {SRC_METABASE_URL}")
     try:
-        src = MetabaseSession(SRC_METABASE_URL, SRC_USERNAME, SRC_PASSWORD)
+        src = MetabaseSession(SRC_METABASE_URL, SRC_API_KEY, SRC_USERNAME, SRC_PASSWORD, SRC_SSL_VERIFY)
     except Exception as e:
         print(f"[FAIL] Source auth: {e}")
         sys.exit(1)
@@ -508,7 +556,7 @@ def main():
     # Connect to target
     print(f"\n[2/2] Connecting to target: {TGT_METABASE_URL}")
     try:
-        tgt = MetabaseSession(TGT_METABASE_URL, TGT_USERNAME, TGT_PASSWORD)
+        tgt = MetabaseSession(TGT_METABASE_URL, TGT_API_KEY, TGT_USERNAME, TGT_PASSWORD, TGT_SSL_VERIFY)
     except Exception as e:
         print(f"[FAIL] Target auth: {e}")
         sys.exit(1)
