@@ -14,8 +14,9 @@ Clone Metabase dashboards across databases or swap source views within the same 
 
 - Python 3.8+
 - `requests` library (`pip install requests`)
+- `certifi` library — optional, for SSL certificate fix (`pip install certifi`)
 - Metabase 0.50+ (tested on 0.58)
-- **Admin access** — the Metabase user specified in the script must have admin privileges
+- **Admin access** — the Metabase user must have admin privileges (or use an API key with sufficient permissions)
 
 ## Finding IDs
 
@@ -84,15 +85,19 @@ Clones a dashboard from one Metabase instance to another (e.g. from production t
 {
     "source": {
         "metabase_url": "https://metabase.your-company.com/",
+        "api_key": "",
         "username": "your@email.com",
         "password": "your-password",
+        "ssl_verify": true,
         "database_id": 11,
         "dashboard_id": 87
     },
     "target": {
         "metabase_url": "http://localhost:5001/",
+        "api_key": "",
         "username": "your@email.com",
-        "password": "your-password"
+        "password": "your-password",
+        "ssl_verify": true
     },
     "name_suffix": " (cloned)"
 }
@@ -101,20 +106,72 @@ Clones a dashboard from one Metabase instance to another (e.g. from production t
 | Field | Description |
 |-------|-------------|
 | `source.metabase_url` | URL of the Metabase server where the original dashboard lives |
-| `source.username` / `password` | Credentials for the source server |
+| `source.api_key` | API key for the source server — if set, `username`/`password` are ignored. Requires Metabase 0.49+ |
+| `source.username` / `password` | Credentials for the source server (used when `api_key` is empty) |
+| `source.ssl_verify` | `true` — verify SSL certificate (default); `false` — disable verification; `"path/to/ca-bundle.crt"` — custom CA file |
 | `source.database_id` | Database ID on the source server (the DB the dashboard queries) |
 | `source.dashboard_id` | ID of the dashboard to clone |
 | `target.metabase_url` | URL of the Metabase server to clone into |
-| `target.username` / `password` | Credentials for the target server |
+| `target.api_key` | API key for the target server |
+| `target.username` / `password` | Credentials for the target server (used when `api_key` is empty) |
+| `target.ssl_verify` | Same as `source.ssl_verify` but for the target server |
 | `name_suffix` | Suffix appended to cloned card and model names |
 
-**2. Run:**
+#### Authentication
+
+Two methods are supported — configure one per server:
+
+**Username + password** (default):
+```json
+"api_key": "",
+"username": "your@email.com",
+"password": "your-password"
+```
+
+**API key** (Metabase 0.49+, recommended):
+```json
+"api_key": "mb_XXXXXXXXXXXXXXXXXXXX",
+"username": "",
+"password": ""
+```
+
+To generate an API key: **Admin settings → Authentication → API Keys → Create API Key**.
+
+#### SSL certificate issues
+
+If you see certificate verification errors (common with self-signed or corporate certificates):
+
+**Option 1 — disable verification** (quick fix):
+```json
+"ssl_verify": false
+```
+
+**Option 2 — install certifi** (recommended):
+```bash
+pip install certifi
+```
+Then leave `ssl_verify: true`. The script will automatically use certifi's CA bundle.
+
+**Option 3 — custom CA bundle**:
+```json
+"ssl_verify": "C:/path/to/your/ca-bundle.crt"
+```
+
+**2. Install dependencies:**
+
+```bash
+pip install requests
+# optional, for SSL certificate fix:
+pip install certifi
+```
+
+**3. Run:**
 
 ```bash
 python clone_cross_metabase_en.py
 ```
 
-**3. Follow the prompts:**
+**4. Follow the prompts:**
 
 - **Target database ID** — the database ID on the **target** server (the script maps tables/fields by schema + name between source and target DBs)
 - **New dashboard name** — name for the cloned dashboard and its collection
